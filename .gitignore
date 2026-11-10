@@ -1,0 +1,14 @@
+# Data never goes into git (downloads, indexes, cache)
+data/
+logs/
+*.zip
+*.dcm
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+# Credentials
+kaggle.json
+.env
