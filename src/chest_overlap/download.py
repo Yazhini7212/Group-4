@@ -16,6 +16,7 @@ import csv
 import datetime as dt
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -44,10 +45,27 @@ def _kaggle_cmd() -> list[str]:
     )
 
 
+def _kaggle_env() -> dict[str, str]:
+    """Environment for the kaggle command.
+
+    New Kaggle tokens (they start with "KGAT_") are a single string. Some versions of the
+    kaggle tool don't read them from ~/.kaggle/access_token, but all of them accept the
+    KAGGLE_API_TOKEN environment variable. So if the variable is not set and the file
+    exists, the token is passed on from the file. The token is never printed.
+    """
+    env = os.environ.copy()
+    token_file = Path.home() / ".kaggle" / "access_token"
+    if not env.get("KAGGLE_API_TOKEN") and token_file.is_file():
+        token = token_file.read_text(encoding="utf-8").strip()
+        if token:
+            env["KAGGLE_API_TOKEN"] = token
+    return env
+
+
 def _run_kaggle(args: list[str]) -> str:
     cmd = _kaggle_cmd() + args
     print("  $ kaggle " + " ".join(args))
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=_kaggle_env())
     out = (proc.stdout or "") + (proc.stderr or "")
     if proc.returncode != 0:
         hint = ""

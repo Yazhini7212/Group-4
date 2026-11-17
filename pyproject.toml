@@ -13,6 +13,7 @@ description = "Image- and patient-level overlap across public chest radiograph c
 requires-python = ">=3.9"
 dependencies = [
     "kaggle>=1.6",
+    "six",            # some kaggle versions need it but do not install it
     "numpy>=1.24",
     "pandas>=2.0",
     "pillow>=10.0",
