@@ -1,5 +1,9 @@
-# Data never goes into git (downloads, indexes, cache)
-data/
+# Images never go into git (raw downloads, cache): too large, and the
+# releases' licences do not allow re-publishing them. The small metadata
+# tables (index, provenance manifests) are tracked so the group shares them.
+data/*
+!data/index/
+!data/manifests/
 logs/
 *.zip
 *.dcm

@@ -1,0 +1,19 @@
+{
+  "collection": "rsna",
+  "name": "RSNA Pneumonia Detection Challenge (DICOM)",
+  "source": "https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge",
+  "kaggle_ref": "rsna-pneumonia-detection-challenge",
+  "kaggle_kind": "competition",
+  "reference": "Shih et al., Radiol Artif Intell 2019. doi:10.1148/ryai.2019180041",
+  "extra_urls": {
+    "pneumonia-challenge-dataset-mappings_2018.json": "https://s3.amazonaws.com/east1.public.rsna.org/AI/2018/pneumonia-challenge-dataset-mappings_2018.json"
+  },
+  "metadata_only": true,
+  "downloaded_at_utc": "2026-11-16T23:31:09+00:00",
+  "kaggle_cli": "Kaggle CLI 2.2.5",
+  "python": "3.12.10",
+  "kaggle_metadata": {
+    "licence": "Kaggle competition rules (accepted on kaggle.com)"
+  },
+  "notes": "You must accept the competition rules on kaggle.com once before the API can download it. patientId is unique per image, so the NIH patient is recovered through the RSNA mapping file."
+}
