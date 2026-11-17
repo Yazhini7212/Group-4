@@ -59,9 +59,12 @@ sbatch scripts/hpc/cache.sbatch --size 512         # full working cache
 ```
 
 If compute nodes cannot reach the internet, run the download on a login node instead
-(inside `tmux`/`screen`):
-`python scripts/prepare_data.py download all && python scripts/prepare_data.py index all`.
-Edit the commented `--account` line in the `.sbatch` files first if your course needs one.
+(inside `tmux`/`screen`), one collection at a time, because login nodes stop programs that use a
+lot of CPU for more than 20 minutes:
+`python scripts/prepare_data.py download covid && python scripts/prepare_data.py index covid`.
+The job scripts start with `#!/usr/bin/zsh` (required at RWTH) and use partition `c23ms`.
+Enable the commented `--account` line only if you were given a project ID.
+How to use the cluster in general: [Getting Started, section 4](docs/GETTING_STARTED.md#4-using-the-rwth-cluster-hpc).
 
 ## Notebooks
 

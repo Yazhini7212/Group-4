@@ -559,9 +559,12 @@ notebooks and a text one in terminals and job logs.
 
 ## 10. The cluster scripts (`scripts/hpc/`)
 
-These are **bash** scripts (the Linux shell language), not Python. On the RWTH cluster you
-don't run heavy work directly on the login node; you submit a **job** to **Slurm**, the queue
-system, which runs it on a compute node when resources are free.
+These are **shell** scripts (the Linux command language), not Python. `setup_env.sh` is run
+with `bash`. The job scripts start with `#!/usr/bin/zsh`, because RWTH requires zsh for batch
+jobs. On the RWTH cluster you don't run heavy work directly on the login node; you submit a
+**job** to **Slurm**, the queue system, which runs it on a compute node when resources are free.
+How to use the cluster in general is explained in
+[Getting Started, section 4](GETTING_STARTED.md#4-using-the-rwth-cluster-hpc).
 
 ### `setup_env.sh` — run once
 1. `module load Python` — the cluster provides software as "modules" you switch on.
@@ -577,19 +580,21 @@ The `#SBATCH` lines at the top are **requests to Slurm**, not comments:
 
 | Line | Meaning |
 |---|---|
-| `--job-name=cxr_download` | name shown in the queue (`squeue -u $USER`) |
+| `--job-name=cxr_download` | name shown in the queue (`squeue --me`) |
 | `--output=logs/%x_%j.out` | where printed output goes (`%x` = job name, `%j` = job number) |
+| `--partition=c23ms` | which kind of node: the normal CPU nodes of CLAIX-2023 |
 | `--time=12:00:00` | maximum run time; Slurm kills the job after it |
 | `--cpus-per-task=32` | number of cores (the cache uses them all in parallel) |
 | `--mem-per-cpu=2G` | memory per core |
-| `##SBATCH --account=…` | double `#` = disabled; fill in and remove one `#` if your course needs it |
+| `##SBATCH --account=…` | double `#` = disabled; fill in and remove one `#` only if you were given a project ID |
 
-Then they activate the environment and call `prepare_data.py`. `"${@:-all}"` means "whatever
-arguments you gave `sbatch`, or `all` if none".
+Then they load Python, activate the environment and call `prepare_data.py`. In
+`download.sbatch`, the line `if [ $# -eq 0 ]; then set -- all; fi` means "if you gave
+`sbatch` no dataset names, use `all`".
 
 ```bash
 sbatch scripts/hpc/download.sbatch          # submit
-squeue -u $USER                             # is it running?
+squeue --me                                 # is it running?
 tail -f logs/cxr_download_<jobnumber>.out   # watch its output live
 ```
 

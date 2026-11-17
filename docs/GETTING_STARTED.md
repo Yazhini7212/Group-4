@@ -64,17 +64,48 @@ The first push opens a GitHub sign-in in your browser. Sign in with the invited 
 
 ---
 
-## 4. Connect VS Code to the RWTH cluster
+## 4. Using the RWTH cluster (HPC)
 
+The cluster (**CLAIX-2023**) is a set of very powerful computers you reach over the internet.
+Official help: https://help.itc.rwth-aachen.de/service/rhr4fjjutttf/
+
+### 4.1 How it works, in one picture
+
+```
+your laptop ──ssh──▶ LOGIN NODE ──sbatch──▶ queue (Slurm) ──▶ COMPUTE NODES
+ (VS Code)          editing, git,                             the heavy work,
+                    small tests                               runs without you
+```
+
+* **Login node:** where you land. Use it for editing, git, installing and *short* tests.
+  It is shared by everyone. Each user may use at most 4 cores and 25% of the memory, and
+  programs using a lot of CPU for **more than 20 minutes may be killed without warning**.
+  Login nodes restart every **Monday at 6:00**.
+* **Compute nodes:** where real work runs. You don't log in there. You write a **job script**
+  and submit it to the queue (**Slurm**), which starts it when a node is free. It keeps running
+  after you close your laptop.
+
+### 4.2 Get access (once)
+1. **HPC account:** register in the **RWTH RegApp** with your RWTH login
+   (guide: *First Steps for RWTH Members* on the help page above). You get an **HPC username**
+   and set an **HPC password**.
+2. **Second factor (required):** RegApp → **Index** → **My Tokens**. Add a smartphone token
+   (scan the QR code with an authenticator app) **and** print/save the TAN list as a backup.
+   If you lose all tokens: servicedesk@itc.rwth-aachen.de.
+
+### 4.3 Log in
+**From a terminal** (test that it works):
+```bash
+ssh <HPC-username>@login23-1.hpc.itc.rwth-aachen.de
+```
+You'll be asked for your HPC password, then the 6-digit code from your authenticator app.
+Other login nodes: `login23-2`, `login23-3`, `login23-4` (use one of them if `login23-1` is slow or down).
+
+**From VS Code (what we use day to day):**
 1. Click the green **><** button in the bottom-left corner → **Connect to Host…** →
-   **+ Add New SSH Host…** and type:
-   ```
-   ssh <your-TIM-ID>@login23-1.hpc.itc.rwth-aachen.de
-   ```
-   If that address doesn't work, look up the current login nodes on
-   https://help.itc.rwth-aachen.de (search "CLAIX login"). You may be asked for a second-factor code.
-2. Connect again via **><** and pick the host. Enter your password. VS Code is now *on the cluster*:
-   the terminal, files and notebooks all run there.
+   **+ Add New SSH Host…** and paste the `ssh …` line above.
+2. Click **><** again and pick the host. Type your password and the code when asked.
+   VS Code is now *on the cluster*: the terminal, files and notebooks all run there.
 3. **First time only**, in a VS Code terminal (on the cluster):
    ```bash
    git clone https://github.com/Yazhini7212/Group-4.git
@@ -82,6 +113,79 @@ The first push opens a GitHub sign-in in your browser. Sign in with the invited 
    bash scripts/hpc/setup_env.sh
    ```
    Then **File → Open Folder → `Group-4`**.
+
+### 4.4 Where to put files
+
+| Folder | Size | Backup? | Use it for |
+|---|---|---|---|
+| `$HOME` | 250 GB | yes | code (our repo), settings, important results |
+| `$WORK` | 250 GB | no | temporary job files |
+| `$HPCWORK` | 1000 GB | **no** | big data: our datasets go to `$HPCWORK/chest_overlap` |
+
+```bash
+r_quota          # how full are my folders?
+cd $HPCWORK      # go to the big-data folder
+```
+Nothing on the cluster is long-term storage. Results you need for the report also go to GitHub
+or your laptop.
+
+### 4.5 Software ("modules")
+Programs are switched on with `module`:
+```bash
+module load Python     # what our scripts and setup_env.sh do
+module list            # what is loaded
+module spider Python   # which versions exist
+```
+Our environment (`~/venvs/chest_overlap`) is made by `setup_env.sh`. Activate it in a terminal with
+```bash
+module load Python && source ~/venvs/chest_overlap/bin/activate
+```
+
+### 4.6 Jobs: running work on the compute nodes
+
+| I want to… | Command |
+|---|---|
+| submit a job | `sbatch scripts/hpc/download.sbatch` |
+| see my jobs (PD = waiting, R = running) | `squeue --me` |
+| when will it start? | `squeue --me --start` |
+| cancel one / all my jobs | `scancel <JOBID>` / `scancel --me` |
+| what ran since yesterday? | `sacct -S $(date -I --date="yesterday")` |
+| how efficient was a finished job? | `seff <JOBID>` |
+
+A job script is a normal script with `#SBATCH` lines at the top that tell Slurm what you need.
+Template for your own (copy `scripts/hpc/cache.sbatch` and change the last line):
+```bash
+#!/usr/bin/zsh
+#SBATCH --job-name=my_test
+#SBATCH --output=logs/%x_%j.out     # printed output goes here
+#SBATCH --partition=c23ms           # normal CPU nodes (96 cores each)
+#SBATCH --time=00:30:00             # max run time hh:mm:ss
+#SBATCH --cpus-per-task=8
+#SBATCH --mem-per-cpu=2G
+
+module load Python
+source ~/venvs/chest_overlap/bin/activate
+python my_script.py
+```
+**Rules:** RWTH job scripts must start with `#!/usr/bin/zsh`. Don't put `module load` into your
+`.zshrc`/`.bashrc`. Test with a short job first (`--time=00:05:00`, or `--partition=devel`, max 1 h)
+before submitting hours of work.
+
+Every RWTH member has a small monthly compute budget on CLAIX-2023, which is enough for this project.
+Leave the `--account` line disabled unless you were given a project ID.
+
+### 4.7 Moving files between laptop and cluster
+* **Easiest:** drag and drop in the VS Code explorer while connected (small files).
+* **Terminal, from your laptop:**
+  ```bash
+  scp myfile.csv <HPC-username>@copy23-1.hpc.itc.rwth-aachen.de:~/
+  ```
+  (`copy23-1` / `copy23-2` are made for file transfer.)
+* **Code:** never copy by hand. Push from one place and pull on the other (section 3).
+
+### 4.8 What about the RWTH JupyterHub?
+There is one (https://jupyterhub.hpc.itc.rwth-aachen.de:9651), but it is a prototype and
+doesn't support our own environment yet. **Use notebooks through VS Code (section 6) instead.**
 
 ## 5. Kaggle token and data download (once, on the cluster)
 
@@ -97,9 +201,11 @@ The first push opens a GitHub sign-in in your browser. Sign in with the invited 
 4. Start the download as a **job**. It takes hours and runs even when you close VS Code:
    ```bash
    sbatch scripts/hpc/download.sbatch
-   squeue -u $USER          # PD = waiting, R = running, gone = finished
+   squeue --me              # PD = waiting, R = running, gone = finished
    ```
    Its output is written to the `logs/` folder. Open the file in VS Code to read it.
+   If the log shows a **connection error**, the compute nodes can't reach Kaggle. Tell the
+   group, and we'll download from a login node instead, one collection at a time.
 5. After it finishes, make the small working copies:
    ```bash
    sbatch scripts/hpc/cache.sbatch --limit 100   # quick test
@@ -123,8 +229,9 @@ Ours live in the `notebooks/` folder. Start with `notebooks/01_explore_data.ipyn
 3. Run a cell with **Shift+Enter**. Run everything with **Run All** in the toolbar.
 
 **Where to run them**
-* **On the cluster (VS Code connected via section 4):** notebooks can see the real data.
-  Use this to look at images and results.
+* **On the cluster (VS Code connected via section 4.3):** notebooks can see the real data.
+  Use this to look at images and results. They run on the login node (max 4 cores), so keep
+  them light.
 * **On your laptop:** fine for editing, and for trying code on small examples. There is no data
   there, so the image cells just print "no data yet".
 
@@ -159,7 +266,9 @@ import os; os.environ["CHEST_OVERLAP_DATA"] = "/path/to/chest_overlap"
 | upload my work | **+** → message → **Commit** → **Sync/Push** |
 | connect to the cluster | green **><** bottom-left → your host |
 | start the data download | `sbatch scripts/hpc/download.sbatch` |
-| see my jobs / cancel one | `squeue -u $USER` / `scancel <job number>` |
+| log in from a terminal | `ssh <HPC-username>@login23-1.hpc.itc.rwth-aachen.de` |
+| see my jobs / cancel one | `squeue --me` / `scancel <JOBID>` |
+| check my storage | `r_quota` |
 | open a notebook | click it → **Select Kernel → chest_overlap** |
 | run a cell | **Shift+Enter** |
 | before committing a notebook | **⋯ → Clear All Outputs** → save |
