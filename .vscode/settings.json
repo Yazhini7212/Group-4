@@ -1,0 +1,13 @@
+{
+  // Lets VS Code find our package for autocompletion even before "pip install -e ." is run.
+  "python.analysis.extraPaths": ["src"],
+  // Terminals and notebooks start in the repository folder.
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  // Keep line endings Linux-friendly (scripts run on the cluster).
+  "files.eol": "\n",
+  // Hide clutter in the file explorer.
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.egg-info": true
+  }
+}

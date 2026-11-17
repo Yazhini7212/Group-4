@@ -23,7 +23,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
-from tqdm import tqdm
+from tqdm.auto import tqdm  # nice progress bars in notebooks, plain ones in terminals
 
 from .config import COLLECTIONS
 

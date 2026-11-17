@@ -1,7 +1,8 @@
 # Group-4
 Image-Level and Patient-Level Overlap Across Public Chest Radiograph Collections
 
-> **New here?** Start with [Getting Started](docs/GETTING_STARTED.md) (GitHub + cluster in 5 minutes), then the step-by-step [code manual](docs/MANUAL.md).
+> **New here?** Start with [Getting Started](docs/GETTING_STARTED.md) (GitHub, VS Code, cluster
+> and Jupyter), then the step-by-step [code manual](docs/MANUAL.md).
 
 ## Data
 
@@ -19,28 +20,65 @@ For RSNA the code also downloads RSNA's public mapping file
 ChestX-ray14 file. That gives the documented **positive control** (columns
 `linked_nih_image_id`, `linked_nih_patient_id` in the RSNA index).
 
-## Running on the RWTH cluster
+## Setup
+
+**Laptop (VS Code):** open the folder, accept the recommended extensions, then
+*Ctrl+Shift+P → Python: Create Environment → Venv* and tick `requirements.txt`.
+Or in a terminal:
+```bash
+python -m venv .venv
+```
+```bash
+.venv/Scripts/activate      # Windows (Git Bash); on Mac/Linux: source .venv/bin/activate
+```
+```bash
+pip install -r requirements.txt
+```
+
+**RWTH cluster:** connect VS Code with Remote-SSH, clone the repo, then once:
+```bash
+bash scripts/hpc/setup_env.sh
+```
+This installs everything into `~/venvs/chest_overlap` and registers the notebook kernel
+**`chest_overlap`**. Put your Kaggle token in `~/.kaggle/kaggle.json` (chmod 600) and accept the
+RSNA competition rules on kaggle.com.
+
+## Preparing the data (on the cluster)
 
 Data goes to `$HPCWORK/chest_overlap` (override with `CHEST_OVERLAP_DATA` or `--data-root`).
 Nothing is stored in the repository or in `$HOME`.
 
 ```bash
-# 1. once, on a login node, from the repo root
-bash scripts/hpc/setup_env.sh
-#    then put your Kaggle token in ~/.kaggle/kaggle.json (chmod 600)
-#    and accept the RSNA competition rules on kaggle.com
-
-# 2. download + index (Slurm job; edit the --account line first if your course needs one)
-sbatch scripts/hpc/download.sbatch            # or: sbatch scripts/hpc/download.sbatch covid kermany
-
-# 3. timing probe on 100 images per collection, then the full cache
-sbatch scripts/hpc/cache.sbatch --limit 100
-sbatch scripts/hpc/cache.sbatch --size 512
+sbatch scripts/hpc/download.sbatch                 # download + index (or: ... download.sbatch covid kermany)
+```
+```bash
+sbatch scripts/hpc/cache.sbatch --limit 100        # timing probe on 100 images per collection
+```
+```bash
+sbatch scripts/hpc/cache.sbatch --size 512         # full working cache
 ```
 
-If compute nodes cannot reach the internet, run the download step on a login node instead
-(inside `tmux`/`screen`):
-`python scripts/prepare_data.py download all && python scripts/prepare_data.py index all`.
+If compute nodes cannot reach the internet, run the download on a login node instead
+(inside `tmux`/`screen`), one collection at a time, because login nodes stop programs that use a
+lot of CPU for more than 20 minutes:
+`python scripts/prepare_data.py download covid && python scripts/prepare_data.py index covid`.
+The job scripts start with `#!/usr/bin/zsh` (required at RWTH) and use partition `c23ms`.
+Enable the commented `--account` line only if you were given a project ID.
+How to use the cluster in general: [Getting Started, section 4](docs/GETTING_STARTED.md#4-using-the-rwth-cluster-hpc).
+
+## Notebooks
+
+Open `notebooks/01_explore_data.ipynb` in VS Code, choose the kernel **chest_overlap**
+(cluster) or **.venv** (laptop) and run the cells with Shift+Enter. In your own notebooks:
+
+```python
+from chest_overlap import load_index, show_rows
+df = load_index()               # all four collections, one row per image
+show_rows(df.sample(4))         # look at 4 random images
+```
+
+Long-running work goes through `sbatch`, not notebooks. Clear notebook outputs before
+committing.
 
 ## What gets written
 
@@ -59,15 +97,6 @@ NIH adds view position, age, sex, original size; RSNA adds the DICOM header fiel
 photometric interpretation, window, rescale, LUT presence); COVID adds the upstream `source_url`.
 No disease label is copied into the index, since the project does not use any.
 
-Load them in Python:
-
-```python
-import sys; sys.path.insert(0, "src")
-from chest_overlap.inventory import load_index
-df = load_index()               # all four collections
-nih = load_index(["nih"])
-```
-
 ### Working-cache conversion (documented for the report)
 1. Decode to one grey channel. DICOM: modality LUT, MONOCHROME1 inverted, stored bit range
    linearly mapped to 0–255, no VOI window. PNG/JPEG: RGB → luma (Pillow `L`), 16-bit → top 8 bits.
@@ -75,12 +104,13 @@ nih = load_index(["nih"])
    aspect ratio kept, never enlarged.
 3. Save as lossless 8-bit PNG.
 
-## Other commands
+## Command-line reference
 
 ```bash
 python scripts/prepare_data.py info                          # collections + data folder in use
 python scripts/prepare_data.py download all --metadata-only  # CSV/list files only (NIH, RSNA)
 python scripts/prepare_data.py index rsna --no-dicom-headers
+python scripts/prepare_data.py --help                        # every option
 ```
 
 ## hongtry

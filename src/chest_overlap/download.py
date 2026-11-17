@@ -23,7 +23,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from tqdm import tqdm
+from tqdm.auto import tqdm  # nice progress bars in notebooks, plain ones in terminals
 
 from .config import Collection
 
