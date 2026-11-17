@@ -1,0 +1,9 @@
+{
+  // VS Code shows a pop-up "install recommended extensions?" when you open this folder.
+  "recommendations": [
+    "ms-python.python",
+    "ms-toolsai.jupyter",
+    "ms-vscode-remote.remote-ssh",
+    "mechatroner.rainbow-csv"
+  ]
+}

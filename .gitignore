@@ -12,3 +12,9 @@ venv/
 # Credentials
 kaggle.json
 .env
+*.egg-info/
+build/
+# VS Code: share the project settings, keep personal ones private
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

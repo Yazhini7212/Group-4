@@ -4,8 +4,8 @@ This manual is for reading the code together as a group, even if you have never 
 before. It goes through every file in the order the data flows, says **what** each part does,
 **why** the project needs it, and points to the exact lines (click the `Lxx` links on GitHub).
 
-> **How to use it in a meeting:** open this file on GitHub on one screen and the linked code on
-> another. Read one section, click the links, read the code, then try the "Try it" box.
+> **How to use it in a meeting:** open this file on GitHub (or in VS Code: right-click →
+> *Open Preview*) on one screen and the linked code on another. Read one section, click the links, read the code, then try the "Try it" box.
 > Sections 1–3 take about 20 minutes; each file after that takes 15–30 minutes.
 
 ---
@@ -20,11 +20,12 @@ before. It goes through every file in the order the data flows, says **what** ea
 6. [`inventory.py` — one table per dataset](#6-inventorypy--one-table-per-dataset)
 7. [`cache.py` — small working copies of every image](#7-cachepy--small-working-copies-of-every-image)
 8. [`prepare_data.py` — the command you actually type](#8-prepare_datapy--the-command-you-actually-type)
-9. [The cluster scripts (`scripts/hpc/`)](#9-the-cluster-scripts-scriptshpc)
-10. [Small support files](#10-small-support-files)
-11. [What the output looks like](#11-what-the-output-looks-like)
-12. [Glossary](#12-glossary)
-13. [Questions to discuss as a group](#13-questions-to-discuss-as-a-group)
+9. [`viewer.py` and the notebooks — looking at the data](#9-viewerpy-and-the-notebooks--looking-at-the-data)
+10. [The cluster scripts (`scripts/hpc/`)](#10-the-cluster-scripts-scriptshpc)
+11. [Small support files](#11-small-support-files)
+12. [What the output looks like](#12-what-the-output-looks-like)
+13. [Glossary](#13-glossary)
+14. [Questions to discuss as a group](#14-questions-to-discuss-as-a-group)
 
 ---
 
@@ -68,7 +69,8 @@ The four datasets (we call each one a **collection** and give it a short **key**
 ## 2. Python crash course
 
 You only need these ideas to follow every file. Each has a tiny example you can type into
-Python (run `python` in a terminal, then type the lines after `>>>`).
+Python: in VS Code open a terminal (**Terminal → New Terminal**), type `python`, then the
+lines after `>>>`. Or type them into a cell of a Jupyter notebook and press **Shift+Enter**.
 
 **1. Variables** store a value under a name.
 ```python
@@ -106,7 +108,8 @@ for split in ("train", "val", "test"):
 
 **7. `import`** loads code from elsewhere: Python's own (`json`, `hashlib`), installed packages
 (`pandas`, `numpy`), or our own files (`from .config import COLLECTIONS` — the dot means
-"from this same folder").
+"from this same folder"). From a notebook you write `from chest_overlap import load_index`;
+that works because our code is *installed* (see `pyproject.toml`, section 11).
 
 **8. Classes / dataclasses** describe a "kind of thing" with named fields. A `@dataclass` is a
 shortcut for a class that just holds data — like a form with fixed boxes.
@@ -133,16 +136,23 @@ only used inside this file".
 ```
 Group-4/
 ├── README.md                ← short "how to run" instructions
-├── docs/MANUAL.md           ← this file
-├── requirements.txt         ← list of Python packages to install
+├── docs/
+│   ├── GETTING_STARTED.md   ← GitHub, VS Code, cluster and Jupyter setup
+│   └── MANUAL.md            ← this file
+├── pyproject.toml           ← makes our code installable + lists the packages it needs
+├── requirements.txt         ← one line: "install this project with notebook extras"
+├── .vscode/                 ← shared VS Code settings and recommended extensions
 ├── .gitignore               ← files git must never upload (data, passwords)
 ├── .gitattributes           ← keeps line endings Linux-friendly
+├── notebooks/
+│   └── 01_explore_data.ipynb ← first look at the data (start here)
 ├── src/chest_overlap/       ← the actual logic (a Python "package")
-│   ├── __init__.py          ← marks the folder as a package
+│   ├── __init__.py          ← lists what you can import from the package
 │   ├── config.py            ← which datasets exist, where data is stored
 │   ├── download.py          ← step 1
 │   ├── inventory.py         ← step 2
-│   └── cache.py             ← step 3
+│   ├── cache.py             ← step 3
+│   └── viewer.py            ← show images in notebooks
 └── scripts/
     ├── prepare_data.py      ← the command-line entry point you run
     └── hpc/                 ← helper scripts for the RWTH cluster
@@ -151,9 +161,10 @@ Group-4/
         └── cache.sbatch
 ```
 
-**Why split `src/` and `scripts/`?** `src/` holds reusable building blocks; later notebooks
-(hashing, matching…) will import them. `scripts/` holds the thing you *run*. Keeping them apart
-means the logic is written once and reused everywhere.
+**Why split `src/`, `scripts/` and `notebooks/`?** `src/` holds reusable building blocks.
+`scripts/` holds what you *run* as a command or cluster job. `notebooks/` is where you
+*explore*: it imports from `src/`. The logic is written once and reused everywhere. If you
+write a useful function in a notebook, move it into `src/` so others can use it too.
 
 ---
 
@@ -407,8 +418,7 @@ re-release itself contains a duplicate!)
   RSNA how many images are linked to NIH.
 * `load_index()` is what **you will use in notebooks** later:
   ```python
-  import sys; sys.path.insert(0, "src")
-  from chest_overlap.inventory import load_index
+  from chest_overlap import load_index
   df = load_index()          # all four tables stacked into one
   df[df.collection == "nih"].patient_id.nunique()   # number of NIH patients
   ```
@@ -501,7 +511,53 @@ python scripts/prepare_data.py index nih
 
 ---
 
-## 9. The cluster scripts (`scripts/hpc/`)
+## 9. `viewer.py` and the notebooks — looking at the data
+
+### 9.1 `viewer.py` — pictures in a notebook
+File: [`src/chest_overlap/viewer.py`](../src/chest_overlap/viewer.py)
+
+Four small functions, all taking **rows of an index table**:
+
+| Function | What it does |
+|---|---|
+| `image_path(row)` | the cached PNG if it exists (fast), otherwise the original file |
+| `load_image(row)` | opens that file as a 0–255 grey numpy array (reuses `load_gray8` from `cache.py`) |
+| `show(images, titles)` | draws a list of arrays side by side with matplotlib |
+| `show_rows(df)` | `load_image` + `show` for every row of a table; skips files not on disk |
+
+```python
+from chest_overlap import load_index, show_rows
+df = load_index(["kermany"])
+show_rows(df[df.patient_id == "kermany:person1"])   # all images of one patient
+```
+
+### 9.2 `__init__.py` — the "front door" of the package
+It imports the most useful functions from all files, so a notebook can write
+`from chest_overlap import load_index, show_rows, build_cache` without knowing which file each
+one is in.
+
+### 9.3 `notebooks/01_explore_data.ipynb`
+The starting notebook. Run it cell by cell; each section answers one question:
+
+1. which data folder is used,
+2. which collections are indexed,
+3. an overview table (images, files on disk, patients, split),
+4. the extra columns of each table,
+5. a few example images per collection,
+6. **positive control:** RSNA images next to the NIH image they came from,
+7. a first overlap question: **patients whose images sit on both sides of the official
+   split**, counted from the IDs alone.
+
+Sections whose data is missing print a note instead of crashing, so the notebook can be opened
+on a laptop with no data at all.
+
+### 9.4 Progress bars
+`download.py`, `inventory.py` and `cache.py` use `tqdm.auto`, which draws a neat progress bar in
+notebooks and a text one in terminals and job logs.
+
+---
+
+## 10. The cluster scripts (`scripts/hpc/`)
 
 These are **bash** scripts (the Linux shell language), not Python. On the RWTH cluster you
 don't run heavy work directly on the login node; you submit a **job** to **Slurm**, the queue
@@ -511,8 +567,10 @@ system, which runs it on a compute node when resources are free.
 1. `module load Python` — the cluster provides software as "modules" you switch on.
 2. Creates a **virtual environment** (`~/venvs/chest_overlap`): a private Python with our
    packages, so we don't clash with anyone else's.
-3. Installs `requirements.txt`, creates `$HPCWORK/chest_overlap` and the `logs/` folder.
-4. Reminds you to set up the Kaggle token.
+3. Installs `requirements.txt` (our package + all packages + the Jupyter kernel).
+4. **Registers the kernel `chest_overlap`**, so VS Code (connected through Remote-SSH) and
+   notebooks on the cluster can use this environment: *Select Kernel → chest_overlap*.
+5. Creates `$HPCWORK/chest_overlap` and the `logs/` folder.
 
 ### `download.sbatch` and `cache.sbatch` — submitted with `sbatch`
 The `#SBATCH` lines at the top are **requests to Slurm**, not comments:
@@ -537,22 +595,27 @@ tail -f logs/cxr_download_<jobnumber>.out   # watch its output live
 
 ---
 
-## 10. Small support files
+## 11. Small support files
 
-* **`requirements.txt`** — the packages and minimum versions: `kaggle` (download), `numpy`
-  (arrays), `pandas` (tables), `pillow` + `opencv-python-headless` (images), `pydicom` (DICOM),
-  `openpyxl` (Excel sheets), `tqdm` (progress bars).
+* **`pyproject.toml`** — describes our project so `pip` can install it. It lists the packages and
+  minimum versions: `kaggle` (download), `numpy` (arrays), `pandas` (tables), `pillow` +
+  `opencv-python-headless` (images), `pydicom` (DICOM), `openpyxl` (Excel sheets), `tqdm`
+  (progress bars), `matplotlib` (plots), plus `ipykernel`/`ipywidgets` for notebooks.
+* **`requirements.txt`** — a single line, `-e .[notebook]`: "install *this* project (`.`) in
+  *editable* mode (`-e`), with the notebook extras". Editable means changes you make in `src/`
+  take effect immediately (in a running notebook: restart the kernel).
+* **`.vscode/settings.json`** and **`.vscode/extensions.json`** — shared VS Code settings
+  (find code in `src/`, Linux line endings, notebooks start in the repo folder) and the
+  extensions VS Code suggests when you open the folder.
 * **`.gitignore`** — git never uploads `data/`, `logs/`, zips, DICOMs, or `kaggle.json`. The
   data is far too big for GitHub, may not be redistributed, and the token is a password.
   **Never commit your `kaggle.json`.**
 * **`.gitattributes`** — Windows and Linux end lines differently; Linux bash refuses Windows
   line endings in scripts. This file forces Linux endings for `.sh`, `.sbatch` and `.py`.
-* **`src/chest_overlap/__init__.py`** — makes the folder importable and re-exports the three
-  most used names from `config.py`.
 
 ---
 
-## 11. What the output looks like
+## 12. What the output looks like
 
 ```
 $HPCWORK/chest_overlap/
@@ -583,7 +646,7 @@ patient-level contamination the project will count.
 
 ---
 
-## 12. Glossary
+## 13. Glossary
 
 | Term | Meaning |
 |---|---|
@@ -607,10 +670,14 @@ patient-level contamination the project will count.
 | **Virtual environment (venv)** | a private Python installation for one project |
 | **DataFrame** | a table in pandas |
 | **Regular expression** | a pattern for matching text, like `^(IM-\d+)` |
+| **Jupyter notebook** | a `.ipynb` file of cells: code, its results and text, run one at a time |
+| **Kernel** | the Python process that runs a notebook's cells; ours is called `chest_overlap` |
+| **Editable install** | `pip install -e .`: our code is importable, and edits apply without reinstalling |
+| **Remote-SSH** | VS Code extension that lets VS Code work directly on the cluster |
 
 ---
 
-## 13. Questions to discuss as a group
+## 14. Questions to discuss as a group
 
 1. Which collections let us measure **patient-level** overlap directly, and which only
    image-level? (Hint: look at which have `patient_id`.)

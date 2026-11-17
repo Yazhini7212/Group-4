@@ -28,7 +28,7 @@ import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
-from tqdm import tqdm
+from tqdm.auto import tqdm  # nice progress bars in notebooks, plain ones in terminals
 
 
 def load_gray8(path: Path) -> tuple[np.ndarray, dict]:

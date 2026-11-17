@@ -1,8 +1,4 @@
-kaggle>=1.6
-numpy>=1.24
-pandas>=2.0
-pillow>=10.0
-opencv-python-headless>=4.8
-pydicom>=2.4
-openpyxl>=3.1
-tqdm>=4.65
+# Installs our own code (src/chest_overlap) plus all packages it needs,
+# including the Jupyter kernel for VS Code notebooks. The list of packages
+# itself lives in pyproject.toml.
+-e .[notebook]
