@@ -1,6 +1,8 @@
 # Group-4
 Image-Level and Patient-Level Overlap Across Public Chest Radiograph Collections
 
+> New to the code? Read the step-by-step [code manual](docs/MANUAL.md).
+
 ## Data
 
 The four collections from the project brief, all from Kaggle:
