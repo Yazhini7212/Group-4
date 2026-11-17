@@ -1,7 +1,7 @@
 # Group-4
 Image-Level and Patient-Level Overlap Across Public Chest Radiograph Collections
 
-> New to the code? Read the step-by-step [code manual](docs/MANUAL.md).
+> **New here?** Start with [Getting Started](docs/GETTING_STARTED.md) (GitHub + cluster in 5 minutes), then the step-by-step [code manual](docs/MANUAL.md).
 
 ## Data
 
