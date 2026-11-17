@@ -85,13 +85,34 @@ your laptop ──ssh──▶ LOGIN NODE ──sbatch──▶ queue (Slurm) �
   and submit it to the queue (**Slurm**), which starts it when a node is free. It keeps running
   after you close your laptop.
 
-### 4.2 Get access (once)
-1. **HPC account:** register in the **RWTH RegApp** with your RWTH login
-   (guide: *First Steps for RWTH Members* on the help page above). You get an **HPC username**
-   and set an **HPC password**.
-2. **Second factor (required):** RegApp → **Index** → **My Tokens**. Add a smartphone token
-   (scan the QR code with an authenticator app) **and** print/save the TAN list as a backup.
-   If you lose all tokens: servicedesk@itc.rwth-aachen.de.
+### 4.2 Get access (once, every group member for themselves)
+
+HPC accounts are **personal**. Never share your password, codes or TANs, and never log in as
+someone else. Each member does this checklist once:
+
+- [ ] **HPC account:** go to https://regapp.itc.rwth-aachen.de, log in with your normal RWTH
+      login, and register for the HPC service. Your **HPC username** is your RWTH user ID
+      (like `ab123456`). Set an **HPC password** there.
+- [ ] **Phone app:** install **Google Authenticator** or **Microsoft Authenticator**, and set
+      your phone's **date & time to automatic**. Codes fail if the clock is even slightly off.
+- [ ] **Smartphone token:** RegApp → **Index** → **My Tokens** → add a **smartphone token** →
+      scan the QR code with the app → type the code it shows to confirm.
+      **This is your normal way to log in.**
+- [ ] **TAN list (backup):** in the same place, create a TAN list and **save it as a PDF and/or
+      print it**, not only on your phone. Each TAN works once. Use them only if your phone is
+      lost or broken, and make a new list when it runs low.
+- [ ] **Test:** log in once (section 4.3) and tell the group it works.
+
+**Login trouble?**
+
+| What you see | What it means | What to do |
+|---|---|---|
+| code rejected | phone clock off, wrong app entry, or code expired while typing | set time to automatic; use the newest RWTH entry; wait for a fresh code |
+| `Connection closed` right away | that login computer blocks you for a while after several wrong tries | **stop trying**, wait 15 min, or use another login node (`login23-2`, `-3`) |
+| RegApp asks for a "current code" you don't have | no working token left (e.g. TANs used up, phone never set up) | you can't fix this yourself. Email servicedesk@itc.rwth-aachen.de: "Please reset my HPC two-factor tokens, user ID ab123456" |
+
+Never type codes over and over: after a few failures you are blocked for a while, and it can
+get worse.
 
 ### 4.3 Log in
 **From a terminal** (test that it works):
@@ -101,11 +122,26 @@ ssh <HPC-username>@login23-1.hpc.itc.rwth-aachen.de
 You'll be asked for your HPC password, then the 6-digit code from your authenticator app.
 Other login nodes: `login23-2`, `login23-3`, `login23-4` (use one of them if `login23-1` is slow or down).
 
+**Make a shortcut (once, on your laptop).** In VS Code: **Ctrl+Shift+P** → *Remote-SSH: Open SSH
+Configuration File* → pick the first file, then paste this with **your** username and save:
+```
+Host rwth-hpc
+    HostName login23-1.hpc.itc.rwth-aachen.de
+    User ab123456
+    ServerAliveInterval 60
+```
+Also: **Ctrl+,** → search *Remote.SSH: Connect Timeout* → set **60**, so you have time to type the code.
+From now on `ssh rwth-hpc` is enough in any terminal. If `login23-1` blocks you, change it to
+`login23-2` in that file.
+
 **From VS Code (what we use day to day):**
-1. Click the green **><** button in the bottom-left corner → **Connect to Host…** →
-   **+ Add New SSH Host…** and paste the `ssh …` line above.
-2. Click **><** again and pick the host. Type your password and the code when asked.
-   VS Code is now *on the cluster*: the terminal, files and notebooks all run there.
+1. Click the green **><** button in the bottom-left corner → **Connect to Host…** → **rwth-hpc**.
+2. Type your password and the code when asked (box at the top of the window). The first time,
+   choose **Linux** if asked. VS Code is now *on the cluster*: the terminal, files and notebooks
+   all run there. The bottom-left corner shows **SSH: rwth-hpc**.
+
+**How to tell where a terminal is:** `PS C:\Users\...` = your laptop.
+`ab123456@login23-1:~$` = the cluster.
 3. **First time only**, in a VS Code terminal (on the cluster):
    ```bash
    git clone https://github.com/Yazhini7212/Group-4.git
@@ -189,13 +225,27 @@ doesn't support our own environment yet. **Use notebooks through VS Code (sectio
 
 ## 5. Kaggle token and data download (once, on the cluster)
 
+Only the person who downloads the data needs this (see 5.1).
+
 1. On https://www.kaggle.com → your picture → **Settings → API → Create New Token**.
-   A file `kaggle.json` downloads to your laptop.
-2. Drag `kaggle.json` from your laptop into the VS Code file explorer (connected to the
-   cluster). Then in the terminal:
+   You get either a long text starting with `KGAT_…` (copy it) or a file `kaggle.json`.
+   **Treat it like a password:** never paste it in chats, screenshots or GitHub.
+2. Put it on the cluster (in a cluster terminal):
    ```bash
-   mkdir -p ~/.kaggle && mv kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
+   mkdir -p ~/.kaggle
    ```
+   * **Text `KGAT_…`:** run `cat > ~/.kaggle/access_token`, paste the text on the empty line,
+     press **Ctrl+D** (no Enter needed), then `chmod 600 ~/.kaggle/access_token`.
+   * **File `kaggle.json`:** drag it into the VS Code explorer (connected to the cluster), then
+     `mv kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json`.
+
+   Test it:
+   ```bash
+   module load Python && source ~/venvs/chest_overlap/bin/activate
+   export KAGGLE_API_TOKEN=$(cat ~/.kaggle/access_token)   # only for the KGAT_ text
+   kaggle datasets list -s chest                           # a table = it works
+   ```
+   Our download code passes the token on automatically, so the job needs no extra step.
 3. Accept the RSNA rules once:
    https://www.kaggle.com/competitions/rsna-pneumonia-detection-challenge/rules
 4. Start the download as a **job**. It takes hours and runs even when you close VS Code:
@@ -212,8 +262,42 @@ doesn't support our own environment yet. **Use notebooks through VS Code (sectio
    sbatch scripts/hpc/cache.sbatch               # full run
    ```
 
-Data ends up in `$HPCWORK/chest_overlap`. Normally only **one** person downloads. Agree in the
-group whose folder is used, and check that the others can read it.
+Data ends up in `$HPCWORK/chest_overlap` of the person who downloaded it.
+
+### 5.1 Sharing the data with the group (download once, everyone reads it)
+
+The data is ~50 GB, so **one person (the "owner") downloads it**, and the others get read
+access. Nobody shares logins.
+
+```
+OWNER                                     TEAMMATES
+downloads once into          ─────────▶   read the same files
+/hpcwork/<owner>/chest_overlap            from their own accounts
+                                          (can look, can't change)
+```
+
+**Owner:** for each teammate (replace `ab123456` with *their* HPC username), run in a cluster
+terminal:
+```bash
+setfacl -m u:ab123456:x $HPCWORK
+setfacl -R -m u:ab123456:rX $HPCWORK/chest_overlap
+setfacl -R -d -m u:ab123456:rX $HPCWORK/chest_overlap
+```
+In plain words: 1) let them pass through your main folder (without seeing anything else in it),
+2) let them read the dataset folder, 3) the same for files added later.
+
+**Each teammate:** run once (with the **owner's** username), then log out and in again:
+```bash
+echo 'export CHEST_OVERLAP_DATA=/hpcwork/<owner-username>/chest_overlap' >> ~/.zshrc
+```
+Now our code and notebooks use the owner's copy automatically. Check with:
+```bash
+ls /hpcwork/<owner-username>/chest_overlap
+```
+
+* Jobs that **create** data (download, cache) are run by the owner only.
+* If `setfacl` gives an error, ask your supervisor or servicedesk@itc.rwth-aachen.de for a
+  **shared project folder** for the group, and put the data there instead.
 
 ---
 
