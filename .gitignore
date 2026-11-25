@@ -1,9 +1,11 @@
 # Images never go into git (raw downloads, cache): too large, and the
 # releases' licences do not allow re-publishing them. The small metadata
-# tables (index, provenance manifests) are tracked so the group shares them.
+# tables (index, provenance manifests) are tracked so the group shares them,
+# plus a small cached sample (scripts/make_sample.py) for development.
 data/*
 !data/index/
 !data/manifests/
+!data/sample/
 logs/
 *.zip
 *.dcm
